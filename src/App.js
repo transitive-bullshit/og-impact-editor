@@ -1,221 +1,155 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useDebounce } from 'use-debounce';
+import React, { useState, useEffect, useCallback } from 'react'
+import { useDebounce } from 'use-debounce'
 
-import AceEditor from 'react-ace';
-import SplitPane from 'react-split-pane';
-import Frame from 'react-frame-component';
-import debounce from 'lodash.debounce';
-import axios from 'axios';
-import handlebars from 'handlebars';
+import AceEditor from 'react-ace'
+import SplitPane from 'react-split-pane'
+import Frame from 'react-frame-component'
+import debounce from 'lodash.debounce'
+import axios from 'axios'
+import handlebars from 'handlebars'
+import InnerHTML from 'dangerously-set-html-content'
 
-import 'ace-builds/src-noconflict/mode-html';
-import 'ace-builds/src-noconflict/mode-css';
-import 'ace-builds/src-noconflict/mode-json';
-import 'ace-builds/src-noconflict/theme-monokai';
+import 'ace-builds/src-noconflict/mode-html'
+import 'ace-builds/src-noconflict/mode-css'
+import 'ace-builds/src-noconflict/mode-json'
+import 'ace-builds/src-noconflict/theme-monokai'
 
-import qs from 'qs';
+import './App.css'
 
-import './App.css';
-import 'normalize.css';
+import htmlExample from './html-example'
+import cssExample from './css-example'
 
-import htmlExample from './html-example';
-import cssExample from './css-example';
+import { writeStorage, useLocalStorage } from '@rehooks/local-storage'
+import ClipLoader from 'react-spinners/ClipLoader'
 
-import { writeStorage, useLocalStorage } from '@rehooks/local-storage';
-import ClipLoader from 'react-spinners/ClipLoader';
-
-const host = 'https://ssfy.sh/chrisvxd/og-impact';
+const host = 'https://ssfy.sh/chrisvxd/og-impact'
 
 const Editor = ({ label, mode, ...props }) => (
-  <div className="Editor">
-    <div className="Editor-title">{label}</div>
+  <div className='Editor'>
+    <div className='Editor-title'>{label}</div>
+
     <AceEditor
       mode={mode}
-      theme="monokai"
+      theme='monokai'
       name={`${mode.toUpperCase()}Editor`}
-      height="100%"
-      width="100%"
+      height='100%'
+      width='100%'
       wrapEnabled
+      setOptions={{
+        tabSize: 2,
+        useSoftTabs: true
+      }}
       {...props}
     />
   </div>
-);
+)
 
 const Button = ({ children, onClick }) => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false)
 
   return (
     <button
-      className="Button"
+      className='Button'
       style={{ opacity: loading ? 0.8 : 1 }}
       disabled={loading}
       onClick={async () => {
-        console.log('Clicked button');
-        setLoading(true);
-        await onClick();
-        setLoading(false);
-      }}>
+        setLoading(true)
+        await onClick()
+        setLoading(false)
+      }}
+    >
       <span style={{ opacity: loading ? 0 : 1 }}>{children}</span>
-      <span className="Button-spinner">
-        {loading && <ClipLoader size={16} color="white" />}
+      <span className='Button-spinner'>
+        {loading && <ClipLoader size={16} color='white' />}
       </span>
     </button>
-  );
-};
-
-const debouncedFetchPreview = debounce(
-  async (data, setUri, setLoading) => {
-    setLoading(true);
-
-    const response = await axios.post(`${host}/preview`, data, {
-      responseType: 'arraybuffer',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'image/*'
-      }
-    });
-
-    if (response.headers['content-type']) {
-      if (response.headers['content-type'].startsWith('image/')) {
-        const b64 = new Buffer(response.data, 'binary').toString('base64');
-        const dataUri =
-          'data:' + response.headers['content-type'] + ';base64,' + b64;
-
-        setUri(dataUri);
-      }
-    }
-
-    setLoading(false);
-  },
-  1000,
-  { maxWait: 5000 }
-);
+  )
+}
 
 const Preview = ({ html, css, params }) => {
-  const [dataUri, setDataUri] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    debouncedFetchPreview(
-      {
-        body: html,
-        styles: css,
-        ...params
-      },
-      setDataUri,
-      setLoading
-    );
-  }, [html, css, params]);
-
-  const [debouncedHtml] = useDebounce(html, 500);
-  const [debouncedParams] = useDebounce(params, 500);
+  const [debouncedHtml] = useDebounce(html, 500)
+  const [debouncedParams] = useDebounce(params, 500)
   const [compiledHtml, setCompiledHtml] = useState(() => {
     try {
-      return handlebars.compile(html)(params);
+      return handlebars.compile(html)(params)
     } catch (e) {
-      console.warn('Error when compiling handlebars, using raw HTML');
-      console.warn(e);
+      console.warn('Error when compiling handlebars, using raw HTML')
+      console.warn(e)
 
-      return html;
+      return html
     }
-  });
+  })
 
   useEffect(() => {
     try {
-      const compiled = handlebars.compile(debouncedHtml)(debouncedParams);
+      const compiled = handlebars.compile(debouncedHtml)(debouncedParams)
 
-      setCompiledHtml(compiled);
+      setCompiledHtml(compiled)
     } catch (e) {
-      console.warn('Error when compiling handlebars, using raw HTML');
-      console.warn(e);
-      setCompiledHtml(debouncedHtml);
+      console.warn('Error when compiling handlebars, using raw HTML')
+      console.warn(e)
+      setCompiledHtml(debouncedHtml)
     }
-  }, [debouncedHtml, debouncedParams]);
+  }, [debouncedHtml, debouncedParams])
 
   return (
-    <div className="Preview">
-      <div className="Preview-item">
-        <div className="Preview-title">iframe Preview</div>
+    <div className='Preview'>
+      <div className='Preview-item'>
+        <div className='Preview-title'>Preview</div>
 
         <Frame
-          className="Preview-frame"
+          className='Preview-frame'
           head={
             <>
-              <style type="text/css">
+              <style type='text/css'>
                 {`
-                body, html, .frame-root, .frame-content , .frame-content > div {
+                body, html, .frame-root, .frame-content, .frame-content > div {
                   height: 100%;
                   padding: 0;
                   margin: 0;
                 }
             `}
               </style>
-              <style type="text/css">{css}</style>
+
+              <style type='text/css'>{css}</style>
             </>
-          }>
-          <div dangerouslySetInnerHTML={{ __html: compiledHtml }} />
+          }
+        >
+          <InnerHTML html={compiledHtml} />
         </Frame>
       </div>
-      <div className="Preview-item">
-        <div className="Preview-title">Image Preview</div>
-        <div className="Preview-subtitle">
-          {`https://ogi.sh?${qs.stringify({
-            template: 'a1b2c3d',
-            ...params
-          })}`}
-        </div>
-
-        <div className="Preview-itemContent">
-          {dataUri && (
-            <img className="Preview-image" src={dataUri} alt="Preview" />
-          )}
-
-          {loading && (
-            <div
-              style={{
-                margin: 16,
-                marginTop: 0,
-                position: 'absolute',
-                bottom: dataUri ? 8 : 'calc(50% - 32px)',
-                right: dataUri ? 8 : 'calc(50% - 32px)'
-              }}>
-              <ClipLoader size={24} />
-            </div>
-          )}
-        </div>
-      </div>
     </div>
-  );
-};
+  )
+}
 
 const debouncedWriteStorage = debounce(
   async (html, css, params) => {
-    writeStorage('html', html);
-    writeStorage('css', css);
-    writeStorage('params', params);
+    writeStorage('html', html)
+    writeStorage('css', css)
+    writeStorage('params', params)
   },
   1000,
   { maxWait: 5000 }
-);
+)
 
 const App = () => {
-  const [storedHtml] = useLocalStorage('html');
-  const [storedCss] = useLocalStorage('css');
-  const [storedParams] = useLocalStorage('params');
+  const [storedHtml] = useLocalStorage('html')
+  const [storedCss] = useLocalStorage('css')
+  const [storedParams] = useLocalStorage('params')
 
-  const [html, setHtml] = useState(storedHtml || htmlExample);
-  const [css, setCss] = useState(storedCss || cssExample);
+  const [html, setHtml] = useState(storedHtml || htmlExample)
+  const [css, setCss] = useState(storedCss || cssExample)
   const [params, setParams] = useState(
     storedParams || { title: 'Hello, World!' }
-  );
-  const [paramsJson, setParamsJson] = useState(JSON.stringify(params, null, 2));
-  const [apiKey, setApiKey] = useState('');
+  )
+  const [paramsJson, setParamsJson] = useState(JSON.stringify(params, null, 2))
+  const [apiKey, setApiKey] = useState('')
 
   const publish = useCallback(async () => {
     if (!apiKey) {
-      alert('Please provide your API key before publishing a template.');
+      alert('Please provide your API key before publishing a template.')
 
-      return;
+      return
     }
 
     try {
@@ -228,50 +162,50 @@ const App = () => {
             Authorization: apiKey
           }
         }
-      );
+      )
 
-      alert(`Save successful. Use template ID ${response.data.template}.`);
+      alert(`Save successful. Use template ID ${response.data.template}.`)
     } catch (e) {
       alert(
         'Publish was unsuccessful. Please ensure you are providing a valid API key.'
-      );
-      console.log(e);
+      )
+      console.log(e)
     }
-  }, [html, css, apiKey]);
+  }, [html, css, apiKey])
 
   useEffect(() => {
-    debouncedWriteStorage(html, css, params);
-  }, [html, css, params]);
+    debouncedWriteStorage(html, css, params)
+  }, [html, css, params])
 
   return (
-    <div className="App">
-      <header className="Header">
-        <div className="Header-logo">
-          <a href="https://ogimpact.sh">
+    <div className='App'>
+      <header className='Header'>
+        <div className='Header-logo'>
+          <a href='https://ogimpact.sh'>
             <img
-              src="https://i.imgur.com/lRT8FxE.png"
-              alt="OG IMPACT"
+              src='https://i.imgur.com/lRT8FxE.png'
+              alt='OG IMPACT'
               width={200}
             />
           </a>
-          <div className="Header-logoProduct">Editor</div>
-          <div className="Header-logoBeta">BETA</div>
+          <div className='Header-logoProduct'>Editor</div>
+          <div className='Header-logoBeta'>BETA</div>
         </div>
 
-        <div className="Header-actions">
-          <div className="Header-action">
-            <a href="https://ogimpact.sh">What's this?</a>
+        <div className='Header-actions'>
+          <div className='Header-action'>
+            <a href='https://ogimpact.sh'>What's this?</a>
           </div>
-          <div className="Header-action">
-            <a href="https://github.com/chrisvxd/og-impact">GitHub</a>
+          <div className='Header-action'>
+            <a href='https://github.com/chrisvxd/og-impact'>GitHub</a>
           </div>
 
-          <div className="Header-action">
+          <div className='Header-action'>
             <input
-              type="text"
-              placeholder="API Key"
+              type='text'
+              placeholder='API Key'
               value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
+              onChange={(e) => setApiKey(e.target.value)}
               style={{
                 border: 'none',
                 borderRadius: 4,
@@ -286,29 +220,29 @@ const App = () => {
         </div>
       </header>
 
-      <main className="Main">
+      <main className='Main'>
         <section style={{ height: '100%', position: 'relative', flexGrow: 1 }}>
-          <SplitPane defaultSize="66.7%" split="vertical">
-            <SplitPane defaultSize="50%" split="vertical" primary="second">
+          <SplitPane defaultSize='66.7%' split='vertical'>
+            <SplitPane defaultSize='50%' split='vertical' primary='second'>
               <Editor
-                label="HTML / Handlebars"
-                mode="html"
+                label='HTML / Handlebars'
+                mode='html'
                 onChange={setHtml}
                 value={html}
               />
 
-              <Editor label="CSS" mode="css" onChange={setCss} value={css} />
+              <Editor label='CSS' mode='css' onChange={setCss} value={css} />
             </SplitPane>
 
             <Editor
-              label="Params"
-              mode="json"
-              onChange={val => {
+              label='Data'
+              mode='json'
+              onChange={(val) => {
                 try {
-                  setParams(JSON.parse(val));
-                  setParamsJson(val);
+                  setParams(JSON.parse(val))
+                  setParamsJson(val)
                 } catch {
-                  console.warn('Error parsing JSON');
+                  console.warn('Error parsing JSON')
                 }
               }}
               value={paramsJson}
@@ -319,7 +253,7 @@ const App = () => {
         <Preview html={html} css={css} params={params} />
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default App;
+export default App
